@@ -1,13 +1,19 @@
 {
   "name": "@blocdigital/uselocalstorage",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Handle interaction with local and session storage.",
   "author": "Bloc Digital <web@bloc.digital>",
   "license": "MIT",
   "keywords": [
     "react",
-    "css modules"
+    "react hook",
+    "shared state",
+    "persistent",
+    "localStorage",
+    "sessionStorage",
+    "crosstab",
+    "helpers"
   ],
   "repository": {
     "type": "git",
