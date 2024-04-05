@@ -105,11 +105,10 @@ interface StorageFunctions {
  * <StorageContext.Provider value={storage}>...</StorageContext.Provider>
  */
 export default function useLocalStorage(type: 'local' | 'session') {
-  const storageType = useMemo<globalThis.Storage | undefined>(() => {
-    if (!window) return undefined;
-
-    return window[`${type}Storage`];
-  }, [type]);
+  const storageType = useMemo<globalThis.Storage | undefined>(
+    () => (typeof window === 'undefined' ? undefined : window[`${type}Storage`]),
+    [type],
+  );
 
   // Listen for different windows changing storage
   useEffect(() => {
