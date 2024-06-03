@@ -1,3 +1,3 @@
-import useLocalStorage from './useLocalStorage';
+import useLocalStorage from './useLocalStorage.js';
 
 export default useLocalStorage;
