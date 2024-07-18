@@ -8,6 +8,17 @@ describe('Hook should be able to store data in storage', () => {
 
     result.current.init('ping', 'pong');
 
-    expect(result.current.get('ping')).toBe('pong');
+    expect(result.current.get<string>('ping')).toBe('pong');
+  });
+
+  it('Event listeners should fire on set', () => {
+    const { result } = renderHook(() => useLocalStorage('session'));
+
+    let output: string | undefined;
+
+    result.current.addEventListener('init', (key) => (output = key));
+    result.current.init('ping', 'pong');
+
+    expect(output).toBe('ping');
   });
 });
