@@ -1,7 +1,7 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 
-const onList: { type: string; callback: Function }[] = [];
-const onAnyList: { callback: Function }[] = [];
+// Types
+type EventType = 'init' | 'get' | 'set' | 'remove' | 'clear';
 
 interface StorageFunctions {
   /**
@@ -37,7 +37,7 @@ interface StorageFunctions {
    *
    * @returns contents of selected key
    */
-  get: (key: string) => unknown;
+  get: <T>(key: string) => T | undefined;
   /**
    * Remove a specific key and its contents.
    *
@@ -64,21 +64,35 @@ interface StorageFunctions {
    *
    * @example storage.on('set', (key) => {
    *   const data = storage.get(key);
-   *   console.log(data)
+   *   console.log(data);
    * })
    */
-  on: (key: string, callback: (key: string) => void) => void;
+  on: (event: EventType, callback: (key?: string) => void) => void;
+  /**
+   * Add event listener for when this component is used.
+   *
+   * @param event name of event triggered by function
+   * @param func a callback function to be called when event matches
+   *
+   * @example storage.addEventListener('set', (key) => {
+   *   const data = storage.get(key);
+   *   console.log(data);
+   * })
+   */
+  addEventListener: (event: EventType, callback: (key?: string) => void) => void;
   /**
    * Add event listener, for all events, for when this component is used.
    *
    * @param func a callback function to be called when any event is triggered
    *
-   * @example storage.onAny((key) => {
+   * @example storage.onAny((event, key) => {
+   *   if(event === 'remove' || event === 'clear') return undefined;
+   *
    *   const data = storage.get(key);
-   *   console.log(data)
+   *   console.log(data);
    * })
    */
-  onAny: (callback: (key: string) => void) => void;
+  onAny: (callback: (event?: EventType, key?: string) => void) => void;
   /**
    * If you exactly match an `on` event you can remove it
    *
@@ -86,6 +100,13 @@ interface StorageFunctions {
    * @param func matching function
    */
   off: (key: string, callback: (key: string) => void) => void;
+  /**
+   * If you exactly match an `addEventListener` event you can remove it
+   *
+   * @param event matching event name
+   * @param func matching function
+   */
+  removeEventListener: (key: string, callback: (key: string) => void) => void;
   /**
    * If you exactly match an `onAny` function you can remove it
    *
@@ -110,6 +131,9 @@ export default function useLocalStorage(type: 'local' | 'session') {
     [type],
   );
 
+  const onList = useRef<Array<{ event: EventType; callback: (key?: string) => void }>>([]);
+  const onAnyList = useRef<Array<{ callback: (event?: EventType, key?: string) => void }>>([]);
+
   // Listen for different windows changing storage
   useEffect(() => {
     if (!storageType) return;
@@ -123,28 +147,28 @@ export default function useLocalStorage(type: 'local' | 'session') {
     const handleStorage = (event: StorageEvent) => {
       const { key, oldValue, newValue } = event;
 
-      if (key && key.match(/^(\$\$)(.*)(_data)$/)) return;
+      if (!key || key.match(/^(\$\$)(.*)(_data)$/)) return;
 
       if (oldValue === null && newValue !== null) {
-        onList.filter((obj) => obj.type === 'init').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('init', key));
+        onList.current.filter((obj) => obj.event === 'init').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('init', key));
       } else if (oldValue !== null && newValue !== null) {
-        onList.filter((obj) => obj.type === 'set').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('set', key));
+        onList.current.filter((obj) => obj.event === 'set').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('set', key));
       } else if (oldValue === null && newValue !== null) {
-        onList.filter((obj) => obj.type === 'remove').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('remove', key));
+        onList.current.filter((obj) => obj.event === 'remove').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('remove', key));
       }
     };
 
     window.addEventListener('storage', handleStorage);
 
     return () => window.removeEventListener('storage', handleStorage);
-  });
+  }, [storageType]);
 
   // Prevent rerun on parent redraw
-  return useMemo<StorageFunctions>(() => {
-    return {
+  return useMemo<StorageFunctions>(
+    () => ({
       init: (key, data): void => {
         const type = typeof data;
         if (type === 'object') {
@@ -152,8 +176,8 @@ export default function useLocalStorage(type: 'local' | 'session') {
         }
         storageType!.setItem(key, String(data));
         storageType!.setItem(`$$${key}_data`, type);
-        onList.filter((obj) => obj.type === 'init').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('init', key));
+        onList.current.filter((obj) => obj.event === 'init').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('init', key));
       },
 
       set: (key, data) => {
@@ -163,16 +187,16 @@ export default function useLocalStorage(type: 'local' | 'session') {
         }
         storageType?.setItem(key, String(data));
         storageType?.setItem(`$$${key}_data`, type);
-        onList.filter((obj) => obj.type === 'set').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('set', key));
+        onList.current.filter((obj) => obj.event === 'set').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('set', key));
       },
 
       get: (key) => {
         const type = storageType?.getItem(`$$${key}_data`) as string;
         const data = storageType?.getItem(key) as string;
 
-        onList.filter((obj) => obj.type === 'get').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('get', key));
+        onList.current.filter((obj) => obj.event === 'get').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('get', key));
 
         switch (type) {
           case 'object':
@@ -191,33 +215,47 @@ export default function useLocalStorage(type: 'local' | 'session') {
       remove: (key) => {
         storageType!.removeItem(key);
         storageType!.removeItem(`$$${key}_data`);
-        onList.filter((obj) => obj.type === 'remove').forEach((obj) => obj.callback(key));
-        onAnyList.forEach((obj) => obj.callback('remove', key));
+        onList.current.filter((obj) => obj.event === 'remove').forEach((obj) => obj.callback(key));
+        onAnyList.current.forEach((obj) => obj.callback('remove', key));
       },
 
       clear: () => {
         storageType!.clear();
-        onList.filter((obj) => obj.type === 'clear').forEach((obj) => obj.callback());
-        onAnyList.forEach((obj) => obj.callback('clear'));
+        onList.current.filter((obj) => obj.event === 'clear').forEach((obj) => obj.callback());
+        onAnyList.current.forEach((obj) => obj.callback('clear'));
       },
 
       on: (event, callback) => {
-        onList.push({ type: event, callback: callback });
+        onList.current.push({ event, callback });
+      },
+
+      addEventListener: (event, callback) => {
+        onList.current.push({ event, callback });
       },
 
       onAny: (callback) => {
-        onAnyList.push({ callback: callback });
+        onAnyList.current.push({ callback });
       },
 
       off: (event, callback) => {
-        const remove = onList.indexOf(onList.filter((e) => e.type === event && e.callback === callback)[0]);
-        if (remove >= 0) onList.splice(remove, 1);
+        const remove = onList.current.indexOf(
+          onList.current.filter((e) => e.event === event && e.callback === callback)[0],
+        );
+        if (remove >= 0) onList.current.splice(remove, 1);
+      },
+
+      removeEventListener: (event, callback) => {
+        const remove = onList.current.indexOf(
+          onList.current.filter((e) => e.event === event && e.callback === callback)[0],
+        );
+        if (remove >= 0) onList.current.splice(remove, 1);
       },
 
       offAny: (callback) => {
-        const remove = onAnyList.indexOf(onAnyList.filter((e) => e.callback === callback)[0]);
-        if (remove >= 0) onAnyList.splice(remove, 1);
+        const remove = onAnyList.current.indexOf(onAnyList.current.filter((e) => e.callback === callback)[0]);
+        if (remove >= 0) onAnyList.current.splice(remove, 1);
       },
-    };
-  }, [storageType]);
+    }),
+    [storageType],
+  );
 }
