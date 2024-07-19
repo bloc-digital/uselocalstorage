@@ -14,7 +14,7 @@ interface StorageFunctions {
    *
    * @event `init` the key is passed through
    */
-  init: (key: string, data: unknown) => void;
+  init: <T>(key: string, data: T) => void;
   /**
    * Set the data, generally you will need to get the data modify it then set it.
    *
@@ -25,7 +25,7 @@ interface StorageFunctions {
    *
    * @event `set` the key is passed through
    */
-  set: (key: string, data: unknown) => void;
+  set: <T>(key: string, data: T) => void;
   /**
    * Get the data.
    *
@@ -171,10 +171,8 @@ export default function useLocalStorage(type: 'local' | 'session') {
     () => ({
       init: (key, data): void => {
         const type = typeof data;
-        if (type === 'object') {
-          data = JSON.stringify(data);
-        }
-        storageType!.setItem(key, String(data));
+
+        storageType!.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
         storageType!.setItem(`$$${key}_data`, type);
         onList.current.filter((obj) => obj.event === 'init').forEach((obj) => obj.callback(key));
         onAnyList.current.forEach((obj) => obj.callback('init', key));
@@ -182,10 +180,8 @@ export default function useLocalStorage(type: 'local' | 'session') {
 
       set: (key, data) => {
         const type = typeof data;
-        if (type === 'object') {
-          data = JSON.stringify(data);
-        }
-        storageType?.setItem(key, String(data));
+
+        storageType?.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
         storageType?.setItem(`$$${key}_data`, type);
         onList.current.filter((obj) => obj.event === 'set').forEach((obj) => obj.callback(key));
         onAnyList.current.forEach((obj) => obj.callback('set', key));
