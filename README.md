@@ -14,8 +14,8 @@ npm install --save @blocdigital/uselocalstorage
 
 | Function            | Params                                                                | Description                                                                  |
 | ------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| init                | (key: `string`, data: `unknown`) => `void`                            | Set the data, generally this should be an empty version of the data type     |
-| set                 | (key: `string`, data: `unknown`) => `void`                            | Set the data, generally you will need to get the data modify it then set it. |
+| init                | \<T\>(key: `string`, data: `unknown`) => `void`                            | Set the data, generally this should be an empty version of the data type     |
+| set                 | \<T\>(key: `string`, data: `unknown`) => `void`                            | Set the data, generally you will need to get the data modify it then set it. |
 | get                 | \<T\>(key: `string`) => T \| `undefined`                              | Get the data.                                                                |
 | remove              | (key: `string`) => `void`                                             | Remove a specific key and its contents.                                      |
 | clear               | () => `void`                                                          | Remove all items from storage                                                |
