@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useCallback } from 'react';
 
 // Types
 type EventType = 'init' | 'get' | 'set' | 'remove' | 'clear';
@@ -134,6 +134,16 @@ export default function useLocalStorage(type: 'local' | 'session') {
   const onList = useRef<Array<{ event: EventType; callback: (key?: string) => void }>>([]);
   const onAnyList = useRef<Array<{ callback: (event?: EventType, key?: string) => void }>>([]);
 
+  /**
+   * Fire the callback for a specific event
+   *
+   * @param event event to be fired
+   * @param key key to be passed through to the callback
+   */
+  const fireCallback = useCallback((event: EventType, key?: string) => {
+    for (const obj of onList.current) obj.event === event && obj.callback(key);
+    for (const obj of onAnyList.current) obj.callback(event, key);
+  }, []);
   // Listen for different windows changing storage
   useEffect(() => {
     if (!storageType) return;
@@ -150,21 +160,18 @@ export default function useLocalStorage(type: 'local' | 'session') {
       if (!key || key.match(/^(\$\$)(.*)(_data)$/)) return;
 
       if (oldValue === null && newValue !== null) {
-        onList.current.filter((obj) => obj.event === 'init').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('init', key));
+        fireCallback('init', key);
       } else if (oldValue !== null && newValue !== null) {
-        onList.current.filter((obj) => obj.event === 'set').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('set', key));
-      } else if (oldValue === null && newValue !== null) {
-        onList.current.filter((obj) => obj.event === 'remove').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('remove', key));
+        fireCallback('set', key);
+      } else if (oldValue !== null && newValue === null) {
+        fireCallback('remove', key);
       }
     };
 
     window.addEventListener('storage', handleStorage);
 
     return () => window.removeEventListener('storage', handleStorage);
-  }, [storageType]);
+  }, [storageType, fireCallback]);
 
   // Prevent rerun on parent redraw
   return useMemo<StorageFunctions>(
@@ -174,8 +181,7 @@ export default function useLocalStorage(type: 'local' | 'session') {
 
         storageType!.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
         storageType!.setItem(`$$${key}_data`, type);
-        onList.current.filter((obj) => obj.event === 'init').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('init', key));
+        fireCallback('init', key);
       },
 
       set: (key, data) => {
@@ -183,16 +189,14 @@ export default function useLocalStorage(type: 'local' | 'session') {
 
         storageType?.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
         storageType?.setItem(`$$${key}_data`, type);
-        onList.current.filter((obj) => obj.event === 'set').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('set', key));
+        fireCallback('set', key);
       },
 
       get: (key) => {
         const type = storageType?.getItem(`$$${key}_data`) as string;
         const data = storageType?.getItem(key) as string;
 
-        onList.current.filter((obj) => obj.event === 'get').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('get', key));
+        fireCallback('get', key);
 
         switch (type) {
           case 'object':
@@ -211,14 +215,14 @@ export default function useLocalStorage(type: 'local' | 'session') {
       remove: (key) => {
         storageType!.removeItem(key);
         storageType!.removeItem(`$$${key}_data`);
-        onList.current.filter((obj) => obj.event === 'remove').forEach((obj) => obj.callback(key));
-        onAnyList.current.forEach((obj) => obj.callback('remove', key));
+
+        fireCallback('remove', key);
       },
 
       clear: () => {
         storageType!.clear();
-        onList.current.filter((obj) => obj.event === 'clear').forEach((obj) => obj.callback());
-        onAnyList.current.forEach((obj) => obj.callback('clear'));
+
+        fireCallback('clear');
       },
 
       on: (event, callback) => {
