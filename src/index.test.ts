@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 
-import useLocalStorage from './index';
+import useLocalStorage from './useLocalStorage';
 
 describe('Hook should be able to store data in storage', () => {
   it('init data and then read it', () => {
