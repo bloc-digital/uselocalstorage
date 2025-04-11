@@ -1,7 +1,7 @@
 {
   "name": "@blocdigital/uselocalstorage",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Handle interaction with local and session storage.",
   "author": "Bloc Digital <web@bloc.digital>",
   "license": "MIT",

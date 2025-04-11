@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 
 // Types
 type EventType = 'init' | 'get' | 'set' | 'remove' | 'clear';
@@ -128,8 +128,11 @@ interface StorageFunctions {
    *
    * @param func matching function
    */
-  offAny: (callback: (key: string) => void) => void;
+  offAny: (callback: (event?: EventType, key?: string) => void) => void;
 }
+
+const onList: Array<{ event: EventType; callback: (key?: string) => void }> = [];
+const onAnyList: Array<{ callback: (event?: EventType, key?: string) => void }> = [];
 
 /**
  * A hook to allow getting and setting items to storage, hook comes
@@ -139,16 +142,39 @@ interface StorageFunctions {
  *
  * @example
  * const storage = useLocalStorage('session');
- * <StorageContext.Provider value={storage}>...</StorageContext.Provider>
+ *
+ * // Log key when it's ready
+ * useEffect(() => {
+ *   if(!storage) return;
+ *
+ *   const key = storage.get<number>('key');
+ *
+ *   if(key) {
+ *     console.log(key)
+ *
+ *     return;
+ *   }
+ *
+ *   const ac = new AbortController();
+ *
+ *   storage.onAny((event, key) => {
+ *     if(key!== 'key') return;
+ *
+ *     if(event === 'init' || event === 'set') {
+ *       console.log(storage.get<number>('key'))
+ *
+ *       ac.abort();
+ *     };
+ *   }, {signal: ac.signal});
+ *
+ *   return () => ac.abort();
+ * }, [storage]);
  */
 export default function useLocalStorage(type: 'local' | 'session') {
   const storageType = useMemo<globalThis.Storage | undefined>(
     () => (typeof window === 'undefined' ? undefined : window[`${type}Storage`]),
     [type],
   );
-
-  const onList = useRef<Array<{ event: EventType; callback: (key?: string) => void }>>([]);
-  const onAnyList = useRef<Array<{ callback: (event?: EventType, key?: string) => void }>>([]);
 
   /**
    * Fire the callback for a specific event
@@ -157,8 +183,8 @@ export default function useLocalStorage(type: 'local' | 'session') {
    * @param key key to be passed through to the callback
    */
   const fireCallback = useCallback((event: EventType, key?: string) => {
-    for (const obj of onList.current) obj.event === event && obj.callback(key);
-    for (const obj of onAnyList.current) obj.callback(event, key);
+    for (const obj of onList) obj.event === event && obj.callback(key);
+    for (const obj of onAnyList) obj.callback(event, key);
   }, []);
 
   // Listen for different windows changing storage
@@ -188,131 +214,138 @@ export default function useLocalStorage(type: 'local' | 'session') {
     window.addEventListener('storage', handleStorage);
 
     return () => window.removeEventListener('storage', handleStorage);
-  }, [storageType, fireCallback]);
+  }, [fireCallback, storageType]);
 
-  // Prevent rerun on parent redraw
-  return useMemo<StorageFunctions>(
-    () => ({
-      init: (key, data): void => {
-        const type = typeof data;
+  const init = useCallback<StorageFunctions['init']>(
+    (key, data) => {
+      const type = typeof data;
 
-        storageType!.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
-        storageType!.setItem(`$$${key}_data`, type);
-        fireCallback('init', key);
-      },
-
-      set: (key, data) => {
-        const type = typeof data;
-
-        storageType?.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
-        storageType?.setItem(`$$${key}_data`, type);
-        fireCallback('set', key);
-      },
-
-      get: (key) => {
-        const type = storageType?.getItem(`$$${key}_data`) as string;
-        const data = storageType?.getItem(key) as string;
-
-        fireCallback('get', key);
-
-        switch (type) {
-          case 'object':
-            return JSON.parse(data);
-          case 'number':
-            return parseFloat(data);
-          case 'boolean':
-            return data === 'true';
-          case 'undefined':
-            return undefined;
-          default:
-            return data;
-        }
-      },
-
-      remove: (key) => {
-        storageType!.removeItem(key);
-        storageType!.removeItem(`$$${key}_data`);
-
-        fireCallback('remove', key);
-      },
-
-      clear: () => {
-        storageType!.clear();
-
-        fireCallback('clear');
-      },
-
-      on: (event, callback, { signal, once } = {}) => {
-        const _callback = once
-          ? (key?: string) => {
-              callback(key);
-              removeSelf();
-            }
-          : callback;
-
-        const removeSelf = () => {
-          onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== _callback);
-        };
-
-        onList.current.push({
-          event,
-          callback: once ? _callback : callback,
-        });
-
-        signal?.addEventListener('abort', removeSelf);
-      },
-
-      addEventListener: (event, callback, { signal, once } = {}) => {
-        const _callback = once
-          ? (key?: string) => {
-              callback(key);
-              removeSelf();
-            }
-          : callback;
-
-        const removeSelf = () => {
-          onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== _callback);
-        };
-
-        onList.current.push({
-          event,
-          callback: once ? _callback : callback,
-        });
-
-        signal?.addEventListener('abort', removeSelf);
-      },
-
-      onAny: (callback, { signal, once } = {}) => {
-        const _callback = once
-          ? (event?: EventType, key?: string) => {
-              callback(event, key);
-              removeSelf();
-            }
-          : callback;
-
-        const removeSelf = () => {
-          onAnyList.current = onAnyList.current.filter((obj) => obj.callback !== _callback);
-        };
-
-        onAnyList.current.push({
-          callback: _callback,
-        });
-
-        signal?.addEventListener('abort', removeSelf);
-      },
-
-      off: (event, callback) => {
-        onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== callback);
-      },
-
-      removeEventListener: (event, callback) => {
-        onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== callback);
-      },
-
-      offAny: (callback) => {
-        onAnyList.current = onAnyList.current.filter((obj) => obj.callback !== callback);
-      },
-    }),
+      storageType!.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
+      storageType!.setItem(`$$${key}_data`, type);
+      fireCallback('init', key);
+    },
     [storageType, fireCallback],
   );
+
+  const set = useCallback<StorageFunctions['set']>(
+    (key, data) => {
+      const type = typeof data;
+
+      storageType?.setItem(key, type === 'object' ? JSON.stringify(data) : String(data));
+      storageType?.setItem(`$$${key}_data`, type);
+      fireCallback('set', key);
+    },
+    [storageType, fireCallback],
+  );
+
+  const get = useCallback<StorageFunctions['get']>(
+    (key) => {
+      const type = storageType?.getItem(`$$${key}_data`) as string;
+      const data = storageType?.getItem(key) as string;
+
+      fireCallback('get', key);
+
+      switch (type) {
+        case 'object':
+          return JSON.parse(data);
+        case 'number':
+          return parseFloat(data);
+        case 'boolean':
+          return data === 'true';
+        case 'undefined':
+          return undefined;
+        default:
+          return data;
+      }
+    },
+    [storageType, fireCallback],
+  );
+
+  const remove = useCallback<StorageFunctions['remove']>(
+    (key: string) => {
+      storageType!.removeItem(key);
+      storageType!.removeItem(`$$${key}_data`);
+
+      fireCallback('remove', key);
+    },
+    [storageType, fireCallback],
+  );
+
+  const clear = useCallback<StorageFunctions['clear']>(() => {
+    storageType!.clear();
+
+    fireCallback('clear');
+  }, [storageType, fireCallback]);
+
+  const off = useCallback<StorageFunctions['off']>((event: string, callback: (key: string) => void) => {
+    const index = onList.findIndex((obj) => obj.event === event && obj.callback === callback);
+    index > -1 && onList.splice(index, 1);
+  }, []);
+
+  const on = useCallback<StorageFunctions['on']>(
+    (event: EventType, callback: (key?: string) => void, options: { signal?: AbortSignal; once?: boolean } = {}) => {
+      const { signal, once } = options;
+
+      const _callback = once
+        ? (key?: string) => {
+            callback(key);
+            removeSelf();
+          }
+        : callback;
+
+      const removeSelf = () => off(event, _callback);
+
+      onList.push({
+        event,
+        callback: once ? _callback : callback,
+      });
+
+      signal?.addEventListener('abort', removeSelf);
+    },
+    [off],
+  );
+
+  const offAny = useCallback<StorageFunctions['offAny']>((callback: (event?: EventType, key?: string) => void) => {
+    const index = onAnyList.findIndex((obj) => obj.callback === callback);
+    index > -1 && onAnyList.splice(index, 1);
+  }, []);
+
+  const onAny = useCallback<StorageFunctions['onAny']>(
+    (callback: (event?: EventType, key?: string) => void, options: { signal?: AbortSignal; once?: boolean } = {}) => {
+      const { signal, once } = options;
+
+      const _callback = once
+        ? (event?: EventType, key?: string) => {
+            callback(event, key);
+            removeSelf();
+          }
+        : callback;
+
+      const removeSelf = () => offAny(_callback);
+
+      onAnyList.push({ callback: _callback });
+
+      signal?.addEventListener('abort', removeSelf);
+    },
+    [offAny],
+  );
+
+  const storageFunctions = useMemo<StorageFunctions>(
+    () => ({
+      init,
+      set,
+      get,
+      remove,
+      clear,
+      on,
+      addEventListener: on,
+      onAny,
+      off,
+      removeEventListener: off,
+      offAny,
+    }),
+    [init, set, get, remove, clear, on, onAny, off, offAny],
+  );
+
+  return storageFunctions;
 }
