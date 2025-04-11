@@ -61,29 +61,42 @@ interface StorageFunctions {
    *
    * @param event name of event triggered by function
    * @param func a callback function to be called when event matches
+   * @param options an object with an options for the event listener
+   * @param options.signal an AbortSignal to cancel the event listener
+   * @param options.once a boolean to remove the event listener after it is called once
    *
    * @example storage.on('set', (key) => {
    *   const data = storage.get(key);
    *   console.log(data);
    * })
    */
-  on: (event: EventType, callback: (key?: string) => void) => void;
+  on: (event: EventType, callback: (key?: string) => void, options?: { signal?: AbortSignal; once?: boolean }) => void;
   /**
    * Add event listener for when this component is used.
    *
    * @param event name of event triggered by function
    * @param func a callback function to be called when event matches
+   * @param options an object with an options for the event listener
+   * @param options.signal an AbortSignal to cancel the event listener
+   * @param options.once a boolean to remove the event listener after it is called once
    *
    * @example storage.addEventListener('set', (key) => {
    *   const data = storage.get(key);
    *   console.log(data);
    * })
    */
-  addEventListener: (event: EventType, callback: (key?: string) => void) => void;
+  addEventListener: (
+    event: EventType,
+    callback: (key?: string) => void,
+    options?: { signal?: AbortSignal; once?: boolean },
+  ) => void;
   /**
    * Add event listener, for all events, for when this component is used.
    *
    * @param func a callback function to be called when any event is triggered
+   * @param options an object with an options for the event listener
+   * @param options.signal an AbortSignal to cancel the event listener
+   * @param options.once a boolean to remove the event listener after it is called once
    *
    * @example storage.onAny((event, key) => {
    *   if(event === 'remove' || event === 'clear') return undefined;
@@ -92,7 +105,10 @@ interface StorageFunctions {
    *   console.log(data);
    * })
    */
-  onAny: (callback: (event?: EventType, key?: string) => void) => void;
+  onAny: (
+    callback: (event?: EventType, key?: string) => void,
+    options?: { signal?: AbortSignal; once?: boolean },
+  ) => void;
   /**
    * If you exactly match an `on` event you can remove it
    *
@@ -144,6 +160,7 @@ export default function useLocalStorage(type: 'local' | 'session') {
     for (const obj of onList.current) obj.event === event && obj.callback(key);
     for (const obj of onAnyList.current) obj.callback(event, key);
   }, []);
+
   // Listen for different windows changing storage
   useEffect(() => {
     if (!storageType) return;
@@ -225,37 +242,77 @@ export default function useLocalStorage(type: 'local' | 'session') {
         fireCallback('clear');
       },
 
-      on: (event, callback) => {
-        onList.current.push({ event, callback });
+      on: (event, callback, { signal, once } = {}) => {
+        const _callback = once
+          ? (key?: string) => {
+              callback(key);
+              removeSelf();
+            }
+          : callback;
+
+        const removeSelf = () => {
+          onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== _callback);
+        };
+
+        onList.current.push({
+          event,
+          callback: once ? _callback : callback,
+        });
+
+        signal?.addEventListener('abort', removeSelf);
       },
 
-      addEventListener: (event, callback) => {
-        onList.current.push({ event, callback });
+      addEventListener: (event, callback, { signal, once } = {}) => {
+        const _callback = once
+          ? (key?: string) => {
+              callback(key);
+              removeSelf();
+            }
+          : callback;
+
+        const removeSelf = () => {
+          onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== _callback);
+        };
+
+        onList.current.push({
+          event,
+          callback: once ? _callback : callback,
+        });
+
+        signal?.addEventListener('abort', removeSelf);
       },
 
-      onAny: (callback) => {
-        onAnyList.current.push({ callback });
+      onAny: (callback, { signal, once } = {}) => {
+        const _callback = once
+          ? (event?: EventType, key?: string) => {
+              callback(event, key);
+              removeSelf();
+            }
+          : callback;
+
+        const removeSelf = () => {
+          onAnyList.current = onAnyList.current.filter((obj) => obj.callback !== _callback);
+        };
+
+        onAnyList.current.push({
+          callback: _callback,
+        });
+
+        signal?.addEventListener('abort', removeSelf);
       },
 
       off: (event, callback) => {
-        const remove = onList.current.indexOf(
-          onList.current.filter((e) => e.event === event && e.callback === callback)[0],
-        );
-        if (remove >= 0) onList.current.splice(remove, 1);
+        onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== callback);
       },
 
       removeEventListener: (event, callback) => {
-        const remove = onList.current.indexOf(
-          onList.current.filter((e) => e.event === event && e.callback === callback)[0],
-        );
-        if (remove >= 0) onList.current.splice(remove, 1);
+        onList.current = onList.current.filter((obj) => obj.event !== event && obj.callback !== callback);
       },
 
       offAny: (callback) => {
-        const remove = onAnyList.current.indexOf(onAnyList.current.filter((e) => e.callback === callback)[0]);
-        if (remove >= 0) onAnyList.current.splice(remove, 1);
+        onAnyList.current = onAnyList.current.filter((obj) => obj.callback !== callback);
       },
     }),
-    [storageType],
+    [storageType, fireCallback],
   );
 }
