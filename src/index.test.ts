@@ -108,6 +108,20 @@ describe('Hook should be able to store data in storage', () => {
     expect(output).toBeUndefined();
   });
 
+  it('should remove specific event listener using removeEventListener', () => {
+    const { result } = renderHook(() => useLocalStorage('session'));
+
+    let output = 0;
+    const callback = () => output++;
+
+    result.current.addEventListener('set', callback, { once: true });
+
+    result.current.set('testKey', 'testValue');
+    result.current.set('testKey', 'testValueAgain');
+
+    expect(output).toBe(1);
+  });
+
   it('should remove onAny listener using offAny', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
@@ -256,5 +270,25 @@ describe('Hook should be able to store data in storage', () => {
     );
 
     expect(output).toBeUndefined();
+  });
+
+  it('should maintain types after setting and getting data', () => {
+    const { result } = renderHook(() => useLocalStorage('session'));
+
+    result.current.init('numberKey', 42);
+    result.current.init('stringKey', 'Hello, World!');
+    result.current.init('booleanKey', true);
+    result.current.init('object', {});
+    result.current.init('array', []);
+    result.current.init('null', null);
+    result.current.init('undefined', undefined);
+
+    expect(result.current.get<number>('numberKey')).toBe(42);
+    expect(result.current.get<string>('stringKey')).toBe('Hello, World!');
+    expect(result.current.get<boolean>('booleanKey')).toBe(true);
+    expect(result.current.get<object>('object')).toEqual({});
+    expect(result.current.get<unknown[]>('array')).toEqual([]);
+    expect(result.current.get<null>('null')).toBe(null);
+    expect(result.current.get<undefined>('undefined')).toBe(undefined);
   });
 });
