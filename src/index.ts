@@ -1,3 +1,2 @@
-import useLocalStorage from './useLocalStorage.js';
-
-export default useLocalStorage;
+export { default } from './useLocalStorage.js';
+export { StorageEvents, type EventKeys } from './StorageEvents.js';

@@ -6,9 +6,9 @@ describe('Hook should be able to store data in storage', () => {
   it('init data and then read it', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
-    result.current.init('ping', 'pong');
+    result.current?.init('ping', 'pong');
 
-    expect(result.current.get<string>('ping')).toBe('pong');
+    expect(result.current?.get<string>('ping')).toBe('pong');
   });
 
   it('Event listeners should fire on set', () => {
@@ -16,8 +16,8 @@ describe('Hook should be able to store data in storage', () => {
 
     let output: string | undefined;
 
-    result.current.addEventListener('init', (key) => (output = key));
-    result.current.init('ping', 'pong');
+    result.current?.addEventListener('init', ({ detail }) => (output = detail.key));
+    result.current?.init('ping', 'pong');
 
     expect(output).toBe('ping');
   });
@@ -25,55 +25,55 @@ describe('Hook should be able to store data in storage', () => {
   it('should remove data from storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
-    result.current.init('testKey', 'testValue');
-    expect(result.current.get('testKey')).toBe('testValue');
+    result.current?.init('testKey', 'testValue');
+    expect(result.current?.get('testKey')).toBe('testValue');
 
-    result.current.remove('testKey');
-    expect(result.current.get('testKey')).toBe(null);
+    result.current?.remove('testKey');
+    expect(result.current?.get('testKey')).toBe(null);
   });
 
   it('should clear all data from storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
-    result.current.init('key1', 'value1');
-    result.current.init('key2', 'value2');
-    expect(result.current.get('key1')).toBe('value1');
-    expect(result.current.get('key2')).toBe('value2');
+    result.current?.init('key1', 'value1');
+    result.current?.init('key2', 'value2');
+    expect(result.current?.get('key1')).toBe('value1');
+    expect(result.current?.get('key2')).toBe('value2');
 
-    result.current.clear();
-    expect(result.current.get('key1')).toBe(null);
-    expect(result.current.get('key2')).toBe(null);
+    result.current?.clear();
+    expect(result.current?.get('key1')).toBe(null);
+    expect(result.current?.get('key2')).toBe(null);
   });
 
   it('should update existing data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
-    result.current.init('updateKey', 'initialValue');
-    expect(result.current.get('updateKey')).toBe('initialValue');
+    result.current?.init('updateKey', 'initialValue');
+    expect(result.current?.get('updateKey')).toBe('initialValue');
 
-    result.current.init('updateKey', 'updatedValue');
-    expect(result.current.get('updateKey')).toBe('updatedValue');
+    result.current?.init('updateKey', 'updatedValue');
+    expect(result.current?.get('updateKey')).toBe('updatedValue');
   });
 
   it('should return null for non-existent key', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
-    expect(result.current.get('nonExistentKey')).toBe(null);
+    expect(result.current?.get('nonExistentKey')).toBe(null);
   });
 
   it('should see all events fired when setting an on all', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
     const events: { [event: string]: unknown } = {};
 
-    result.current.onAny((event, key) => {
-      if (event) events[event] = key;
+    result.current?.onAny(({ detail }) => {
+      if (detail.event) events[detail.event] = detail.key;
     });
 
-    result.current.init('ping', 'pong');
-    result.current.set('ping', 'pong2');
-    result.current.get('ping');
-    result.current.remove('ping');
-    result.current.clear();
+    result.current?.init('ping', 'pong');
+    result.current?.set('ping', 'pong2');
+    result.current?.get('ping');
+    result.current?.remove('ping');
+    result.current?.clear();
 
     expect(events.init).toBe('ping');
     expect(events.set).toBe('ping');
@@ -86,12 +86,12 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
     let output: string | undefined;
-    const callback = (key: string | undefined) => (output = key);
+    const callback = ({ detail }: { detail: { key: string | undefined } }) => (output = detail.key);
 
-    result.current.on('set', callback);
-    result.current.off('set', callback);
+    result.current?.on('set', callback);
+    result.current?.off('set', callback);
 
-    result.current.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue');
     expect(output).toBeUndefined();
   });
 
@@ -99,12 +99,12 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
     let output: string | undefined;
-    const callback = (key: string | undefined) => (output = key);
+    const callback = ({ detail }: { detail: { key: string | undefined } }) => (output = detail.key);
 
-    result.current.addEventListener('set', callback);
-    result.current.removeEventListener('set', callback);
+    result.current?.addEventListener('set', callback);
+    result.current?.removeEventListener('set', callback);
 
-    result.current.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue');
     expect(output).toBeUndefined();
   });
 
@@ -114,10 +114,10 @@ describe('Hook should be able to store data in storage', () => {
     let output = 0;
     const callback = () => output++;
 
-    result.current.addEventListener('set', callback, { once: true });
+    result.current?.addEventListener('set', callback, { once: true });
 
-    result.current.set('testKey', 'testValue');
-    result.current.set('testKey', 'testValueAgain');
+    result.current?.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValueAgain');
 
     expect(output).toBe(1);
   });
@@ -126,14 +126,14 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
     const events: { [event: string]: unknown } = {};
-    const callback = (event?: string, key?: string) => {
-      if (event) events[event] = key;
+    const callback = ({ detail }: { detail: { event?: string; key?: string } }) => {
+      if (detail.event) events[detail.event] = detail.key;
     };
 
-    result.current.onAny(callback);
-    result.current.offAny(callback);
+    result.current?.onAny(callback);
+    result.current?.offAny(callback);
 
-    result.current.init('key', 'value');
+    result.current?.init('key', 'value');
     expect(events.init).toBeUndefined();
   });
 
@@ -143,10 +143,10 @@ describe('Hook should be able to store data in storage', () => {
     let output1: string | undefined;
     let output2: string | undefined;
 
-    result.current.on('set', (key) => (output1 = key));
-    result.current.on('set', (key) => (output2 = key));
+    result.current?.on('set', ({ detail }) => (output1 = detail.key));
+    result.current?.on('set', ({ detail }) => (output2 = detail.key));
 
-    result.current.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue');
     expect(output1).toBe('testKey');
     expect(output2).toBe('testKey');
   });
@@ -155,10 +155,10 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
     let callCount = 0;
-    result.current.on('set', () => callCount++, { once: true });
+    result.current?.on('set', () => callCount++, { once: true });
 
-    result.current.set('testKey', 'testValue');
-    result.current.set('testKey', 'testValue2');
+    result.current?.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue2');
     expect(callCount).toBe(1);
   });
 
@@ -166,10 +166,10 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
     let callCount = 0;
-    result.current.onAny(() => callCount++, { once: true });
+    result.current?.onAny(() => callCount++, { once: true });
 
-    result.current.set('testKey', 'testValue');
-    result.current.set('testKey', 'testValue2');
+    result.current?.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue2');
     expect(callCount).toBe(1);
   });
 
@@ -179,10 +179,10 @@ describe('Hook should be able to store data in storage', () => {
     let output: string | undefined;
     const controller = new AbortController();
 
-    result.current.on('set', (key) => (output = key), { signal: controller.signal });
+    result.current?.on('set', ({ detail }) => (output = detail.key), { signal: controller.signal });
 
     controller.abort();
-    result.current.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue');
     expect(output).toBeUndefined();
   });
 
@@ -192,15 +192,15 @@ describe('Hook should be able to store data in storage', () => {
     const events: { [event: string]: unknown } = {};
     const controller = new AbortController();
 
-    result.current.onAny(
-      (event, key) => {
-        if (event) events[event] = key;
+    result.current?.onAny(
+      ({ detail }) => {
+        if (detail.event) events[detail.event] = detail.key;
       },
       { signal: controller.signal },
     );
 
     controller.abort();
-    result.current.set('testKey', 'testValue');
+    result.current?.set('testKey', 'testValue');
     expect(events.set).toBeUndefined();
   });
 
@@ -208,7 +208,7 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('local'));
 
     let output: string | undefined;
-    result.current.on('init', (key) => (output = key));
+    result.current?.on('init', ({ detail }) => (output = detail.key));
 
     window.dispatchEvent(
       new StorageEvent('storage', {
@@ -225,7 +225,7 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('local'));
 
     let output: string | undefined;
-    result.current.on('set', (key) => (output = key));
+    result.current?.on('set', ({ detail }) => (output = detail.key));
 
     window.dispatchEvent(
       new StorageEvent('storage', {
@@ -242,7 +242,7 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('local'));
 
     let output: string | undefined;
-    result.current.on('remove', (key) => (output = key));
+    result.current?.on('remove', ({ detail }) => (output = detail.key));
 
     window.dispatchEvent(
       new StorageEvent('storage', {
@@ -259,7 +259,7 @@ describe('Hook should be able to store data in storage', () => {
     const { result } = renderHook(() => useLocalStorage('local'));
 
     let output: string | undefined;
-    result.current.on('init', (key) => (output = key));
+    result.current?.on('init', ({ detail }) => (output = detail.key));
 
     window.dispatchEvent(
       new StorageEvent('storage', {
@@ -275,20 +275,20 @@ describe('Hook should be able to store data in storage', () => {
   it('should maintain types after setting and getting data', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
-    result.current.init('numberKey', 42);
-    result.current.init('stringKey', 'Hello, World!');
-    result.current.init('booleanKey', true);
-    result.current.init('object', {});
-    result.current.init('array', []);
-    result.current.init('null', null);
-    result.current.init('undefined', undefined);
+    result.current?.init('numberKey', 42);
+    result.current?.init('stringKey', 'Hello, World!');
+    result.current?.init('booleanKey', true);
+    result.current?.init('object', {});
+    result.current?.init('array', []);
+    result.current?.init('null', null);
+    result.current?.init('undefined', undefined);
 
-    expect(result.current.get<number>('numberKey')).toBe(42);
-    expect(result.current.get<string>('stringKey')).toBe('Hello, World!');
-    expect(result.current.get<boolean>('booleanKey')).toBe(true);
-    expect(result.current.get<object>('object')).toEqual({});
-    expect(result.current.get<unknown[]>('array')).toEqual([]);
-    expect(result.current.get<null>('null')).toBe(null);
-    expect(result.current.get<undefined>('undefined')).toBe(undefined);
+    expect(result.current?.get!<number>('numberKey')).toBe(42);
+    expect(result.current?.get!<string>('stringKey')).toBe('Hello, World!');
+    expect(result.current?.get!<boolean>('booleanKey')).toBe(true);
+    expect(result.current?.get!<object>('object')).toEqual({});
+    expect(result.current?.get!<unknown[]>('array')).toEqual([]);
+    expect(result.current?.get!<null>('null')).toBe(null);
+    expect(result.current?.get!<undefined>('undefined')).toBe(undefined);
   });
 });
