@@ -108,7 +108,7 @@ describe('Hook should be able to store data in storage', () => {
     expect(output).toBeUndefined();
   });
 
-  it('should remove specific event listener using removeEventListener', () => {
+  it('should honour once option using addEventListener', () => {
     const { result } = renderHook(() => useLocalStorage('session'));
 
     let output = 0;
@@ -215,6 +215,7 @@ describe('Hook should be able to store data in storage', () => {
         key: 'testKey',
         oldValue: null,
         newValue: 'testValue',
+        storageArea: window.localStorage,
       }),
     );
 
@@ -232,6 +233,7 @@ describe('Hook should be able to store data in storage', () => {
         key: 'testKey',
         oldValue: 'oldValue',
         newValue: 'newValue',
+        storageArea: window.localStorage,
       }),
     );
 
@@ -249,6 +251,7 @@ describe('Hook should be able to store data in storage', () => {
         key: 'testKey',
         oldValue: 'oldValue',
         newValue: null,
+        storageArea: window.localStorage,
       }),
     );
 
@@ -266,6 +269,7 @@ describe('Hook should be able to store data in storage', () => {
         key: '$$invalid_key_data',
         oldValue: null,
         newValue: 'value',
+        storageArea: window.localStorage,
       }),
     );
 
