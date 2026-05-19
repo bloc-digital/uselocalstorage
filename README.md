@@ -44,14 +44,14 @@ const Example = () => {
 
   // initialise the storage state
   useEffect(() => {
-    storage.init('state', 'hello world');
+    storage?.init('state', 'hello world');
   }, [storage]);
 
   // set up listeners to keep state in sync with storage in this tab and other tabs/windows
   useEffect(() => {
     const ac = new AbortController();
 
-    storage.addEventListener(
+    storage?.addEventListener(
       'set',
       (event) => {
         const key = event.detail?.key;
@@ -71,7 +71,7 @@ const Example = () => {
     <div>
       <span>Current state: {state}</span>
       <br />
-      <button onClick={() => storage.set('state', String(Date.now()))}>Change State</button>
+      <button onClick={() => storage?.set('state', String(Date.now()))}>Change State</button>
     </div>
   );
 };
@@ -118,6 +118,7 @@ console.log('Current value:', current);
 
 // Cleanup your listeners when no longer needed
 ac.abort();
+storage.destroy();
 ```
 
 This works in plain TypeScript/JavaScript running in the browser, and listeners also receive updates when storage changes in other tabs/windows.
