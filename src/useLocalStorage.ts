@@ -1,9 +1,24 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StorageEvents } from './StorageEvents';
 
 // Types
 import type { EventKeys } from './StorageEvents';
 type AnyEvent = CustomEvent<{ event: EventKeys; key?: string; value?: unknown }>;
+
+type ExtendedStorageEvents = StorageEvents & {
+  on: (
+    type: EventKeys,
+    callback: (event: CustomEvent<{ key: string; value: unknown }>) => void,
+    options?: AddEventListenerOptions,
+  ) => void;
+  onAny: (callback: (event: AnyEvent) => void, options?: AddEventListenerOptions) => void;
+  off: (
+    type: EventKeys,
+    callback: (event: CustomEvent<{ key: string; value: unknown }>) => void,
+    options?: EventListenerOptions,
+  ) => void;
+  offAny: (callback: (event: AnyEvent) => void, options?: EventListenerOptions) => void;
+};
 
 /**
  * A hook to allow getting and setting items in storage with typed events.
@@ -44,25 +59,23 @@ type AnyEvent = CustomEvent<{ event: EventKeys; key?: string; value?: unknown }>
  * }, [storage]);
  */
 export default function useLocalStorage(type: 'local' | 'session') {
-  return useMemo(() => {
+  const storage = useMemo<ExtendedStorageEvents | null>(() => {
     const storage = typeof window === 'undefined' ? undefined : new StorageEvents(type);
 
     if (!storage) return null;
 
-    return {
-      init: storage.init.bind(storage),
-      set: storage.set.bind(storage),
-      get: storage.get.bind(storage),
-      remove: storage.remove.bind(storage),
-      clear: storage.clear.bind(storage),
+    return Object.assign(storage, {
       on: storage.addEventListener.bind(storage),
-      addEventListener: storage.addEventListener.bind(storage),
       onAny: (callback: (event: AnyEvent) => void, options?: AddEventListenerOptions) =>
         storage.addEventListener('any', callback, options),
       off: storage.removeEventListener.bind(storage),
-      removeEventListener: storage.removeEventListener.bind(storage),
       offAny: (callback: (event: AnyEvent) => void, options?: EventListenerOptions) =>
         storage.removeEventListener('any', callback, options),
-    };
+    }) as ExtendedStorageEvents;
   }, [type]);
+
+  // Cleanup on unmount
+  useEffect(() => () => storage?.destroy(), [storage]);
+
+  return storage;
 }
