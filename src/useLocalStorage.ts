@@ -60,7 +60,7 @@ type ExtendedStorageEvents = StorageEvents & {
  */
 export default function useLocalStorage(type: 'local' | 'session') {
   const storage = useMemo<ExtendedStorageEvents | null>(() => {
-    const storage = typeof window === 'undefined' ? undefined : new StorageEvents(type);
+    const storage = StorageEvents.acquire(type);
 
     if (!storage) return null;
 
@@ -75,7 +75,7 @@ export default function useLocalStorage(type: 'local' | 'session') {
   }, [type]);
 
   // Cleanup on unmount
-  useEffect(() => () => storage?.destroy(), [storage]);
+  useEffect(() => () => StorageEvents.release(type), [type]);
 
   return storage;
 }

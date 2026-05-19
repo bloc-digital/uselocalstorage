@@ -295,4 +295,27 @@ describe('Hook should be able to store data in storage', () => {
     expect(result.current?.get!<null>('null')).toBe(null);
     expect(result.current?.get!<undefined>('undefined')).toBe(undefined);
   });
+
+  it('should share events across multiple hook instances in the same tab', () => {
+    const first = renderHook(() => useLocalStorage('session'));
+    const second = renderHook(() => useLocalStorage('session'));
+
+    let receivedKey: string | undefined;
+    second.result.current?.on('set', ({ detail }) => (receivedKey = detail.key));
+
+    first.result.current?.set('sharedKey', 'value');
+
+    expect(receivedKey).toBe('sharedKey');
+    expect(second.result.current?.get<string>('sharedKey')).toBe('value');
+  });
+
+  it('should keep shared instance alive until the last consumer unmounts', () => {
+    const first = renderHook(() => useLocalStorage('session'));
+    const second = renderHook(() => useLocalStorage('session'));
+
+    first.unmount();
+
+    second.result.current?.set('stillAlive', 'yes');
+    expect(second.result.current?.get<string>('stillAlive')).toBe('yes');
+  });
 });
