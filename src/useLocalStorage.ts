@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { StorageEvents } from './StorageEvents';
+import { StorageEvents } from './StorageEvents.js';
 
 // Types
 import type { EventKeys } from './StorageEvents';

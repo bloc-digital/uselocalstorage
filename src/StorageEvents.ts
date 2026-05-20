@@ -1,4 +1,4 @@
-import { TypedEventTarget } from './helpers/TypedEventTarget';
+import { TypedEventTarget } from './helpers/TypedEventTarget.js';
 
 // Types
 export type StorageType = 'local' | 'session';
