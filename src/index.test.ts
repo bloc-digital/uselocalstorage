@@ -318,4 +318,27 @@ describe('Hook should be able to store data in storage', () => {
     second.result.current?.set('stillAlive', 'yes');
     expect(second.result.current?.get<string>('stillAlive')).toBe('yes');
   });
+
+  it('should preserve the shared instance during a same-turn remount', () => {
+    const first = renderHook(() => useLocalStorage('session'));
+    const instance = first.result.current;
+
+    first.unmount();
+
+    const second = renderHook(() => useLocalStorage('session'));
+
+    expect(second.result.current).toBe(instance);
+  });
+
+  it('should destroy the shared instance when the remount window passes', async () => {
+    const first = renderHook(() => useLocalStorage('session'));
+    const instance = first.result.current;
+
+    first.unmount();
+    await Promise.resolve();
+
+    const second = renderHook(() => useLocalStorage('session'));
+
+    expect(second.result.current).not.toBe(instance);
+  });
 });
