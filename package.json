@@ -21,7 +21,10 @@
   },
   "homepage": "https://github.com/bloc-digital/uselocalstorage/blob/main/README.md",
   "jest": {
-    "testEnvironment": "jsdom"
+    "testEnvironment": "jsdom",
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
   },
   "types": "dist/types/index.d.ts",
   "main": "dist/cjs/index.js",
@@ -47,7 +50,8 @@
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && tsc -p tsconfig-types.json",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "postversion": "git push && git push --tags"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
