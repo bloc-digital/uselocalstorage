@@ -97,8 +97,12 @@ export class StorageEvents extends TypedEventTarget<StorageEventsMap> {
     entry.refCount -= 1;
 
     if (entry.refCount <= 0) {
-      entry.storage.destroy();
-      registry[type] = null;
+      queueMicrotask(() => {
+        if (registry[type] !== entry || entry.refCount > 0) return;
+
+        entry.storage.destroy();
+        registry[type] = null;
+      });
     }
   }
 

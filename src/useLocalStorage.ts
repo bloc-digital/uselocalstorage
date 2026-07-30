@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { StorageEvents } from './StorageEvents.js';
 
 // Types
@@ -59,23 +59,26 @@ type ExtendedStorageEvents = StorageEvents & {
  * }, [storage]);
  */
 export default function useLocalStorage(type: 'local' | 'session') {
-  const storage = useMemo<ExtendedStorageEvents | null>(() => {
-    const storage = StorageEvents.acquire(type);
+  const [storage, setStorage] = useState<ExtendedStorageEvents | null>(null);
 
-    if (!storage) return null;
+  useEffect(() => {
+    const instance = StorageEvents.acquire(type);
 
-    return Object.assign(storage, {
-      on: storage.addEventListener.bind(storage),
+    if (!instance) return;
+
+    const extended = Object.assign(instance, {
+      on: instance.addEventListener.bind(instance),
       onAny: (callback: (event: AnyEvent) => void, options?: AddEventListenerOptions) =>
-        storage.addEventListener('any', callback, options),
-      off: storage.removeEventListener.bind(storage),
+        instance.addEventListener('any', callback, options),
+      off: instance.removeEventListener.bind(instance),
       offAny: (callback: (event: AnyEvent) => void, options?: EventListenerOptions) =>
-        storage.removeEventListener('any', callback, options),
+        instance.removeEventListener('any', callback, options),
     }) as ExtendedStorageEvents;
-  }, [type]);
 
-  // Cleanup on unmount
-  useEffect(() => () => StorageEvents.release(type), [type]);
+    setStorage(extended);
+
+    return () => StorageEvents.release(type);
+  }, [type]);
 
   return storage;
 }
